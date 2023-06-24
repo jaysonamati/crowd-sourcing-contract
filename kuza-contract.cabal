@@ -23,6 +23,29 @@ source-repository head
   type: git
   location: https://github.com/githubuser/kuza-contract
 
+-- common common-all
+--     build-depends:    base ^>=4.14.3.0
+--                     , aeson
+--                     , bytestring
+--                     , containers
+--                     , cardano-api
+--                     , data-default
+--                     , plutus-ledger-api
+--                     , plutus-tx-plugin
+--                     , plutus-tx
+--                     , text
+--                     , QuickCheck
+--                     , tasty
+--                     , tasty-quickcheck
+--                     , plutus-simple-model
+--                     , mtl
+--     default-language: Haskell2010
+--     ghc-options: -Wall -fobject-code -fno-ignore-interface-pragmas
+--                  -fno-omit-interface-pragmas -fno-strictness 
+--                  -fno-spec-constr -fno-specialise -fexpose-all-unfoldings
+--                  -fplugin-opt PlutusTx.Plugin:defer-errors
+
+
 library
   exposed-modules:
         Kuza.OnChain.KuzaProjects
@@ -74,8 +97,9 @@ executable kuza-contract-exe
   default-language: Haskell2010
 
 test-suite kuza-contract-test
+  -- import common-all
   type: exitcode-stdio-1.0
-  main-is: Spec.hs
+  main-is: FundingProjectTest.hs
   other-modules:
       Paths_kuza_contract
   hs-source-dirs:
@@ -84,4 +108,11 @@ test-suite kuza-contract-test
   build-depends:
       base >=4.7 && <5
     , kuza-contract
+    , plutus-simple-model
+    , tasty
+    , tasty-quickcheck
+    , QuickCheck
+    , plutus-ledger-api
+    , plutus-tx-plugin
+    , plutus-tx
   default-language: Haskell2010

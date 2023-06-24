@@ -354,3 +354,9 @@ source-repository-package
   type: git
   location: https://github.com/input-output-hk/hedgehog-extras
   tag: 714ee03a5a786a05fc57ac5d2f1c2edce4660d85
+
+-- library for unit tests of Plutus scripts                                                                                       
+source-repository-package
+   type: git                                                                                                                         
+   location: https://github.com/geniusyield/plutus-simple-model
+   tag: d710c4c5400ff7072fe89c337c1cdd0128dc5d99  

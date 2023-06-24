@@ -18,6 +18,8 @@ module Kuza.OnChain.KuzaProjects
     (-- * Utility Functions 
       saveVal
     , saveLucidCode
+    -- * Data Types
+    , ProjectParams
     ) where
 
 import           Control.Lens                hiding (contains, to, from)
@@ -52,30 +54,72 @@ data ProjectType = Approved | PoolProject deriving Show
 makeLift ''ProjectType
 unstableMakeIsData ''ProjectType
 
+data Goal = SDG1 | SDG2 | SDG3 | SDG4 | SDG5 | SDG6 | SDG7 | SDG8 | SDG9 | SDG10 | SDG11 | SDG12 | SDG13 | SDG14 | SDG15 | SDG16 deriving Show 
+
+unstableMakeIsData ''Goal
+
+type Impact = [Goal]
+
+-- | This is the milestone data object
+-- It accompanies every expenditure proposal
+data Milestone = Milestone 
+    { title          :: BuiltinByteString 
+    , amountRequired :: Integer
+    , timeRange      :: Integer
+    , proposedImpact :: [Impact]
+    , dependencies   :: [Milestone]
+    } deriving Show
+
+unstableMakeIsData ''Milestone
+
+-- | This is the tentative schedule of the project, it is input during project creation
+-- There is debate whether it should be in the on-chain code (to avoid bloat data)
+-- What would be it's using in moving funds from the project script address??
+type Schedule = [Milestone]
+
 
 data ProjectParams = ProjectParams
     { projectFundingTarget :: Integer
+    -- The funding target of the project
     , projectFundingDeadline :: POSIXTime
+    -- The funding deadline of the project
     , projectTypeFlag :: ProjectType
     } deriving Show
 makeLift ''ProjectParams
 
 data ProjectDatum = ProjectDatum
         { spendingMintingPolicyId     :: CurrencySymbol
+        -- This is the policy that mints tokens which allow the project owners to move funds from the project address
         , fundingTokMintingPolicyId   :: CurrencySymbol
+        -- This is the token a contributor gets after funding into a project
         , votingTokMintingPolicyId    :: CurrencySymbol
+        -- This allows the project funders to vote for expenditure proposals
         , projectOwnerTokMintPolicyId :: CurrencySymbol
+        -- This allows for the minting of project ownership tokens
         , projectFunders              :: [PubKeyHash]
+        -- There is a privacy argument to be made that this should not be here
         , projectOwners               :: [PubKeyHash]
+        -- The project owners, this is input once the project is initialized
         , fundingAmount               :: Integer
+        -- This is the amount that is currently funded into the project script address, there is a argument to be made that it should be of type Value.
         } deriving Show
 
 unstableMakeIsData ''ProjectDatum
 
 
-data ProjectAction = Vote PubKeyHash
-                   | Fund (AssetClass, Integer, PubKeyHash)
-                   | MoveFundsProposal PubKeyHash
+{- [ProjectDatum] 
+We want this to be able to control when funds are moved out of the script address so as to actualize an expenditure, so the information contained 
+in the datum should enable that control. For instance the minting policies will check if the pkh spending any funds has the correct token (AssetClass)
+before getting to spend. 
+
+Another function of the datum would be to allow for state management of a project; For instance since the project can be in the Funding stage, the 
+Implementation stage (which contains the expenditure proposals and the reporting) and finally the 'Actualization' stage (this is more like realizing 
+the impact the project has, this will probably have features such as carbon credits etc). We'll start with the implementation of the two stages for the 
+hackathon demo. Each of the stages will have information that is relevant to them. 
+-}
+
+data ProjectAction = Fund (AssetClass, Integer, PubKeyHash)
+                   | MoveFundsProposal (PubKeyHash, Impact, BuiltinByteString )
                    | MoveFunds (AssetClass, Integer, PubKeyHash)
 
 unstableMakeIsData ''ProjectAction
@@ -83,7 +127,7 @@ unstableMakeIsData ''ProjectAction
 
 {-# INLINABLE mkProjectsValidator #-}
 mkProjectsValidator :: ProjectParams -> ProjectDatum -> ProjectAction -> ScriptContext -> Bool
-mkProjectsValidator project dat red ctx =
+mkProjectsValidator project _ red ctx =
     case red of
         Fund (_, _, pkh)                ->   traceIfFalse "Amount is not greater than one" checkContributionAmount                   &&
                                              traceIfFalse "Signed By contributor" (signedByContributor pkh)                          &&
@@ -91,9 +135,8 @@ mkProjectsValidator project dat red ctx =
                                              traceIfFalse "Funding token not minted and transferred" (checkFundingTokenTransfer pkh) &&
                                              traceIfFalse "Deadline has passed" checkDeadlinePassed                                  &&
                                              traceIfFalse "Target has reached" checkFundingTargetReached
-        MoveFundsProposal _   -> False
-        Vote _                -> False
-        MoveFunds (_, _ ,_)   -> False
+        MoveFundsProposal (_, _, _)     -> False
+        MoveFunds (_, _ ,_)             -> False
 
 
     where
