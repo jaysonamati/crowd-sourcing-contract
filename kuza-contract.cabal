@@ -49,6 +49,8 @@ source-repository head
 library
   exposed-modules:
         Kuza.OnChain.KuzaProjects
+      , Kuza.OnChain.ProjectTokens
+      , Kuza.OnChain.Types
       , Utilities.Serialise
       , Utilities.PlutusTx
       , Utilities.Conversions
@@ -82,6 +84,7 @@ library
       , plutus-ledger-api
       , plutus-tx
       , plutus-tx-plugin
+      , plutus-script-utils
   default-language: Haskell2010
 
 executable kuza-contract-exe
