@@ -139,9 +139,9 @@ type ProposalTitle = BuiltinByteString
 type ReportDocument = BuiltinByteString
 
 data ProjectAction = Fund PubKeyHash
-                   | MoveFundsProposal (PubKeyHash, Impact, ProposalTitle )
+                   | MoveFundsProposal PubKeyHash
                    -- This proposal would ideally include proposal parameters as part of the input...
-                   | MoveFunds (AssetClass, Integer, PubKeyHash)
+                   | MoveFunds (Integer, PubKeyHash)
                    | SubmitReport ReportDocument
 
 unstableMakeIsData ''ProjectAction
@@ -151,21 +151,24 @@ unstableMakeIsData ''ProjectAction
 mkProjectsValidator :: ProjectParams -> ProjectDatum -> ProjectAction -> ScriptContext -> Bool
 mkProjectsValidator project dat red ctx =
     case red of
-        Fund pkh                        ->   traceIfFalse "Amount is not greater than five" checkContributionAmount                   &&
-                                             traceIfFalse "Signed By contributor" (signedByContributor pkh)                           &&
-                                             traceIfFalse "Datum has not updated" (checkDatumUpdate pkh)                              &&
-                                             traceIfFalse "Funding token not minted and transferred" (checkFundingTokenTransfer pkh)  &&
-                                             traceIfFalse "Deadline has passed" checkDeadlinePassed                                   &&
+        Fund pkh                        ->   traceIfFalse "Amount is not greater than five" checkContributionAmount                                   &&
+                                             traceIfFalse "Signed By contributor" (signedByContributor pkh)                                           &&
+                                             traceIfFalse "Datum has not updated" (checkDatumUpdate pkh)                                              &&
+                                             traceIfFalse "Funding token not minted and transferred" (checkFundingTokenTransfer pkh)                  &&
+                                             traceIfFalse "Deadline has passed" checkDeadlinePassed                                                   &&
                                              traceIfFalse "Target has reached" checkFundingTargetReached
-        MoveFundsProposal (_, _, _)     ->   traceIfFalse "Datum has not updated" (checkDatumUpdate (projectCreator project))         &&  -- This should use a different datum update check
-                                             traceIfFalse "Not signed by project creator" (signedByProjectCreator (projectCreator project)) &&
+        
+        MoveFundsProposal pkh           ->   traceIfFalse "Not signed by project funder" (signedByProjectFunder pkh)                                  &&
+                                             traceIfFalse "Signed by project creator" (not (signedByProjectCreator (projectCreator project)))         &&
                                              traceIfFalse "Proposal Token not minted and transferred" checkProposalTokenTransfer
-        MoveFunds (_, _ , _)            ->   traceIfFalse "Datum has not updated" (checkDatumUpdate (projectCreator project))         &&
-                                             traceIfFalse "Proposal token not in input" (checkTokenInInputs $ proposalTokMintingPolicyId dat) &&
-                                             traceIfFalse "Expenditure token not in input" (checkTokenInInputs $ spendingMintingPolicyId dat) &&
-                                             traceIfFalse "Funds exceeding proposal amount" checkExpenditureFundsAmount               &&
+        
+        MoveFunds (_, _)                ->   traceIfFalse "Expenditure token not in input" (checkTokenInInputs $ spendingMintingPolicyId dat)         &&
+                                             traceIfFalse "Proposal token not in input" (checkTokenInInputs $ proposalTokMintingPolicyId dat)         &&
+                                             traceIfFalse "Datum has not updated" (checkDatumUpdate (projectCreator project))                         &&
+                                             traceIfFalse "Funds exceeding proposal amount" checkExpenditureFundsAmount                               &&
                                              traceIfFalse "Transaction not signed by authorized entity" (signedByProjectCreator (projectCreator project))
-        SubmitReport _                  -> False
+        
+        SubmitReport _                  ->   False
 
 
     where
@@ -221,6 +224,12 @@ mkProjectsValidator project dat red ctx =
         --------- PROPOSAL-RELATED FUNCTIONS ------------
         checkProposalTokenTransfer :: Bool
         checkProposalTokenTransfer = any (\funder -> proposalTokMintingPolicyId dat `elem` symbols (valuePaidTo info funder)) $ projectFunders dat
+
+        signedByProjectFunder :: PubKeyHash -> Bool
+        signedByProjectFunder projFunder = txSignedBy info projFunder 
+        -- && (case datumInOutput of
+                                                                                -- Nothing -> False
+                                                                                -- Just pd -> projFunder `elem` projectFunders pd) 
 
         --------- EXPENDITURE-RELATED FUNCTIONS ------------
 
