@@ -107,7 +107,7 @@ mkFundingAcknowledgePolicy :: FundingAckParams -> FundingAckMintRedeemer -> Scri
 mkFundingAcknowledgePolicy fundAckParams red ctx = case red of
     InitialMint -> traceIfFalse "minted amount must be positive" checkMintPositive && 
                    traceIfFalse "invalid datum at project output" checkDatum       &&
-                   traceIfFalse "Invalid mint amount" checkIniitalMintValue
+                   traceIfFalse "Invalid mint amount" checkInitialMintValue
     Mint   -> traceIfFalse "minted amount must be positive" checkMintPositive  
             --   traceIfFalse "invalid datum at project output" checkDatum
     Burn   -> traceIfFalse "Minting instead of burning!" checkBurnNegative
@@ -130,8 +130,8 @@ mkFundingAcknowledgePolicy fundAckParams red ctx = case red of
         checkBurnNegative :: Bool
         checkBurnNegative = mintedAmount < 0
 
-        checkIniitalMintValue :: Bool 
-        checkIniitalMintValue = mintedAmount == initialFundingAckSupply fundAckParams
+        checkInitialMintValue :: Bool 
+        checkInitialMintValue = mintedAmount == initialFundingAckSupply fundAckParams
 
         --------- PROJECT-RELATED FUNCTIONS ------------
 

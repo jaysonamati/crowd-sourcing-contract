@@ -141,7 +141,7 @@ type ReportDocument = BuiltinByteString
 data ProjectAction = Fund PubKeyHash
                    | MoveFundsProposal PubKeyHash
                    -- This proposal would ideally include proposal parameters as part of the input...
-                   | MoveFunds (Integer, PubKeyHash)
+                   | WithdrawFunds (Integer, PubKeyHash)
                    | SubmitReport ReportDocument
 
 unstableMakeIsData ''ProjectAction
@@ -162,7 +162,7 @@ mkProjectsValidator project dat red ctx =
                                              traceIfFalse "Signed by project creator" (not (signedByProjectCreator (projectCreator project)))         &&
                                              traceIfFalse "Proposal Token not minted and transferred" checkProposalTokenTransfer
         
-        MoveFunds (_, _)                ->   traceIfFalse "Expenditure token not in input" (checkTokenInInputs $ spendingMintingPolicyId dat)         &&
+        WithdrawFunds (_, _)            ->   traceIfFalse "Expenditure token not in input" (checkTokenInInputs $ spendingMintingPolicyId dat)         &&
                                              traceIfFalse "Proposal token not in input" (checkTokenInInputs $ proposalTokMintingPolicyId dat)         &&
                                              traceIfFalse "Datum has not updated" (checkDatumUpdate (projectCreator project))                         &&
                                              traceIfFalse "Funds exceeding proposal amount" checkExpenditureFundsAmount                               &&
@@ -223,7 +223,7 @@ mkProjectsValidator project dat red ctx =
 
         --------- PROPOSAL-RELATED FUNCTIONS ------------
         checkProposalTokenTransfer :: Bool
-        checkProposalTokenTransfer = any (\funder -> proposalTokMintingPolicyId dat `elem` symbols (valuePaidTo info funder)) $ projectFunders dat
+        checkProposalTokenTransfer = any (\funder -> proposalTokMintingPolicyId dat `elem` symbols (valuePaidTo info $ projectCreator dat)) $ projectFunders dat
 
         signedByProjectFunder :: PubKeyHash -> Bool
         signedByProjectFunder projFunder = txSignedBy info projFunder 
